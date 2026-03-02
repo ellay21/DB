@@ -1,0 +1,61 @@
+# CMake build dirs
+build/
+out/
+
+# Compiled artifacts
+*.o
+*.a
+*.so
+*.so.*
+*.d
+*.obj
+*.lib
+*.dll
+*.exe
+*.pdb
+
+# Generated files
+compile_commands.json
+*.gcno
+*.gcda
+*.gcov
+coverage.info
+coverage/
+
+# CMake-specific
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+_CPack_Packages/
+*.cbp
+install_manifest.txt
+
+# Sanitizer / profiling
+*.profraw
+*.profdata
+default.profraw
+
+# Fuzz corpora and crashes (only crashers are committed)
+tests/fuzz/corpus/crashers/
+tests/fuzz/corpus/tmp/
+
+# Editor and OS
+.DS_Store
+.vscode/settings.json
+*.swp
+*.swo
+*~
+.idea/
+*.iml
+Thumbs.db
+Desktop.ini
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.mypy_cache/
+
+# Packaging staging
+build/staging/
