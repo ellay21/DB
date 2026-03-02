@@ -1,0 +1,145 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 25, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "dev",
+      "inherits": "base",
+      "displayName": "Development (Debug + tests)",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "REVENANT_BUILD_TESTS": "ON",
+        "REVENANT_BUILD_EXAMPLES": "ON"
+      }
+    },
+    {
+      "name": "release",
+      "inherits": "base",
+      "displayName": "Release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "REVENANT_BUILD_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "relwithdebinfo",
+      "inherits": "base",
+      "displayName": "Release with debug info",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "REVENANT_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "asan",
+      "inherits": "dev",
+      "displayName": "ASan + UBSan",
+      "cacheVariables": {
+        "REVENANT_ENABLE_ASAN": "ON",
+        "REVENANT_ENABLE_UBSAN": "ON"
+      }
+    },
+    {
+      "name": "ubsan",
+      "inherits": "dev",
+      "displayName": "UBSan only",
+      "cacheVariables": {
+        "REVENANT_ENABLE_UBSAN": "ON"
+      }
+    },
+    {
+      "name": "tsan",
+      "inherits": "dev",
+      "displayName": "TSan",
+      "cacheVariables": {
+        "REVENANT_ENABLE_TSAN": "ON"
+      }
+    },
+    {
+      "name": "msan",
+      "inherits": "dev",
+      "displayName": "MSan",
+      "cacheVariables": {
+        "REVENANT_ENABLE_MSAN": "ON"
+      }
+    },
+    {
+      "name": "coverage",
+      "inherits": "dev",
+      "displayName": "Coverage (gcov)",
+      "cacheVariables": {
+        "REVENANT_ENABLE_COVERAGE": "ON"
+      }
+    },
+    {
+      "name": "bench",
+      "inherits": "base",
+      "displayName": "Benchmark",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "REVENANT_BUILD_BENCH": "ON",
+        "REVENANT_BUILD_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "sim",
+      "inherits": "dev",
+      "displayName": "Deterministic simulation",
+      "cacheVariables": {
+        "REVENANT_BUILD_SIM": "ON"
+      }
+    },
+    {
+      "name": "fuzz",
+      "inherits": "base",
+      "displayName": "Fuzzing (libFuzzer)",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "REVENANT_ENABLE_FUZZING": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "dev",          "configurePreset": "dev" },
+    { "name": "release",      "configurePreset": "release" },
+    { "name": "asan",         "configurePreset": "asan" },
+    { "name": "tsan",         "configurePreset": "tsan" },
+    { "name": "msan",         "configurePreset": "msan" },
+    { "name": "coverage",     "configurePreset": "coverage" },
+    { "name": "bench",        "configurePreset": "bench" },
+    { "name": "fuzz",         "configurePreset": "fuzz" }
+  ],
+  "testPresets": [
+    {
+      "name": "dev",
+      "configurePreset": "dev",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
+    },
+    {
+      "name": "unit",
+      "configurePreset": "dev",
+      "filter": { "include": { "label": "unit" } },
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "asan",
+      "configurePreset": "asan",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "tsan",
+      "configurePreset": "tsan",
+      "output": { "outputOnFailure": true }
+    }
+  ]
+}
