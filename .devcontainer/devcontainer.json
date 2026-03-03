@@ -1,0 +1,32 @@
+{
+  "name": "Revenant Dev",
+  "build": {
+    "context": "..",
+    "dockerfile": "../docker/Dockerfile.dev"
+  },
+  "runArgs": [
+    "--shm-size=2g",
+    "--ulimit", "memlock=-1:-1",
+    "--ulimit", "nofile=65536:65536",
+    "--cap-add=SYS_NICE",
+    "--cap-add=IPC_LOCK",
+    "--security-opt", "seccomp=unconfined"
+  ],
+  "mounts": [
+    "source=revenant-ccache,target=/ccache,type=volume"
+  ],
+  "containerEnv": {
+    "CCACHE_DIR": "/ccache"
+  },
+  "postCreateCommand": "bash scripts/bootstrap.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-vscode.cmake-tools",
+        "llvm-vs-code-extensions.vscode-clangd",
+        "EditorConfig.EditorConfig"
+      ]
+    }
+  }
+}
