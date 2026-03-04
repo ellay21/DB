@@ -1,0 +1,37 @@
+name: Bug Report
+description: File a bug report
+labels: ["kind:bug"]
+body:
+  - type: input
+    id: kernel
+    attributes:
+      label: Kernel version
+      description: "uname -r output"
+    validations:
+      required: true
+  - type: input
+    id: cpu
+    attributes:
+      label: CPU model and architecture
+      description: "e.g. Intel Xeon Gold 6154, x86-64"
+    validations:
+      required: true
+  - type: input
+    id: seed
+    attributes:
+      label: Simulation seed (if reproducible via simulation)
+      description: "e.g. --seed=12345; leave blank if not applicable"
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproducer
+      description: Minimal steps or code to reproduce the issue
+    validations:
+      required: true

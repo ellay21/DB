@@ -1,0 +1,73 @@
+name: Publish CI Docker Images
+
+on:
+  workflow_dispatch:
+    inputs:
+      push:
+        description: "Push images to GHCR (false = build-only dry run)"
+        required: false
+        default: "true"
+
+concurrency:
+  group: "${{ github.workflow }}"
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    name: "Build & push ${{ matrix.variant }}"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: gcc-13
+            target: ci-gcc13
+            tag: gcc-13
+          - variant: clang-18
+            target: ci-clang18
+            tag: clang-18
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      - name: Log in to GHCR
+        if: inputs.push == 'true'
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772  # v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@b5730b3d4d851e9bfeb6adc3f8a42d49e89d5e7b  # v3.10.0
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c82  # v6.18.0
+        with:
+          context: .
+          file: docker/Dockerfile.ci
+          target: ${{ matrix.target }}
+          push: ${{ inputs.push == 'true' }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/revenant-ci:${{ matrix.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Output digest
+        if: inputs.push == 'true'
+        run: |
+          echo "## Image: ${{ matrix.variant }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Pin this digest in \`.github/workflows/ci.yml\`:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "ghcr.io/${{ github.repository_owner }}/revenant-ci@${{ steps.build.outputs.digest }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "::notice title=Digest (${{ matrix.variant }})::ghcr.io/${{ github.repository_owner }}/revenant-ci@${{ steps.build.outputs.digest }}"

@@ -1,0 +1,27 @@
+name: Performance Regression
+description: Report a performance regression
+labels: ["kind:regression"]
+body:
+  - type: textarea
+    id: methodology
+    attributes:
+      label: Benchmark methodology
+      description: |
+        Required: describe the benchmark, hardware, OS tuning, number of runs,
+        warmup procedure, and coordinated omission handling.
+      placeholder: |
+        Hardware: ...
+        OS: ..., kernel: ...
+        CPU isolation: ...
+        Benchmark: bench/...
+        Baseline commit: ...
+        Regressed commit: ...
+        Results (p50/p99/p99.99): ...
+    validations:
+      required: true
+  - type: input
+    id: kernel
+    attributes:
+      label: Kernel version
+    validations:
+      required: true

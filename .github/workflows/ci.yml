@@ -1,0 +1,166 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # --------------------------------------------------------------------------
+  lint:
+    name: Lint
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      - name: Install tools
+        run: |
+          pip3 install pre-commit cmake-format codespell
+
+      - name: clang-format check
+        run: |
+          find include src tests -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \
+            | xargs clang-format-18 --dry-run --Werror --style=file
+
+      - name: cmake-format check
+        run: |
+          cmake-format --check CMakeLists.txt tests/CMakeLists.txt
+
+      - name: codespell
+        run: codespell include/ src/ docs/ --skip="*.pc,*.pc.in" --quiet-level=2
+
+      - name: shellcheck
+        run: |
+          find scripts .githooks -type f | xargs file | grep 'shell script' \
+            | cut -d: -f1 | xargs shellcheck --severity=warning || true
+
+  # --------------------------------------------------------------------------
+  build:
+    name: "Build (${{ matrix.compiler }}, ${{ matrix.build_type }})"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - compiler: gcc-13
+            cc: gcc-13
+            cxx: g++-13
+            build_type: Debug
+          - compiler: gcc-13
+            cc: gcc-13
+            cxx: g++-13
+            build_type: Release
+          - compiler: clang-18
+            cc: clang-18
+            cxx: clang++-18
+            build_type: Debug
+          - compiler: clang-18
+            cc: clang-18
+            cxx: clang++-18
+            build_type: Release
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      - name: Cache build artifacts
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684  # v4.2.3
+        with:
+          path: build
+          key: "${{ runner.os }}-${{ matrix.compiler }}-${{ matrix.build_type }}-${{ hashFiles('**/CMakeLists.txt', 'cmake/**') }}"
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.compiler }}-${{ matrix.build_type }}-
+            ${{ runner.os }}-${{ matrix.compiler }}-
+
+      - name: Install compiler
+        run: |
+          sudo apt-get update -qq
+          if [[ "${{ matrix.compiler }}" == gcc-13 ]]; then
+            sudo apt-get install -y gcc-13 g++-13
+          else
+            sudo apt-get install -y clang-18
+          fi
+
+      - name: Configure
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+        run: |
+          cmake -S . -B build/ci \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DREVENANT_BUILD_TESTS=ON \
+            -DCMAKE_CXX_STANDARD=20
+
+      - name: Build
+        run: cmake --build build/ci --parallel $(nproc)
+
+  # --------------------------------------------------------------------------
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-24.04
+    needs: build
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      - name: Restore build cache
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684  # v4.2.3
+        with:
+          path: build
+          key: "${{ runner.os }}-gcc-13-Debug-${{ hashFiles('**/CMakeLists.txt', 'cmake/**') }}"
+          restore-keys: |
+            ${{ runner.os }}-gcc-13-Debug-
+
+      - name: Install gcc-13
+        run: sudo apt-get update -qq && sudo apt-get install -y gcc-13 g++-13
+
+      - name: Configure (if not cached)
+        env:
+          CC: gcc-13
+          CXX: g++-13
+        run: |
+          cmake -S . -B build/ci \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DREVENANT_BUILD_TESTS=ON \
+            -DCMAKE_CXX_STANDARD=20
+
+      - name: Build (if not cached)
+        run: cmake --build build/ci --parallel $(nproc)
+
+      - name: Run unit tests
+        run: |
+          ctest --test-dir build/ci -L unit \
+            --output-on-failure \
+            --output-junit test-results.xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: test-results
+          path: test-results.xml
+
+  # --------------------------------------------------------------------------
+  packaging:
+    name: Packaging Consumers
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      - name: Install gcc-13
+        run: sudo apt-get update -qq && sudo apt-get install -y gcc-13 g++-13
+
+      - name: Run packaging tests
+        env:
+          CC: gcc-13
+          CXX: g++-13
+        run: bash tests/packaging/run.sh
