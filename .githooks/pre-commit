@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# pre-commit hook: formatting + basic linting on staged files only. Budget: < 5 s.
+set -euo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+
+STAGED_CPP="$(git diff --cached --name-only --diff-filter=ACMR -- '*.cpp' '*.hpp' '*.h' '*.cc' 2>/dev/null || true)"
+
+if [[ -n "${STAGED_CPP}" ]] && command -v clang-format &>/dev/null; then
+    echo "${STAGED_CPP}" | xargs clang-format --dry-run --Werror --style=file 2>/dev/null || {
+        echo "pre-commit: clang-format violations. Run: scripts/format.sh --changed-only" >&2
+        exit 1
+    }
+fi
+
+STAGED_CMAKE="$(git diff --cached --name-only --diff-filter=ACMR -- 'CMakeLists.txt' '*.cmake' 2>/dev/null || true)"
+if [[ -n "${STAGED_CMAKE}" ]] && command -v cmake-format &>/dev/null; then
+    echo "${STAGED_CMAKE}" | xargs cmake-format --check 2>/dev/null || {
+        echo "pre-commit: cmake-format violations." >&2
+        exit 1
+    }
+fi
+
+# Trailing whitespace
+git diff --cached --check 2>/dev/null || {
+    echo "pre-commit: trailing whitespace detected." >&2
+    exit 1
+}
+
+exit 0

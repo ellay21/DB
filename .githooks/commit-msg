@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# commit-msg hook: validates Conventional Commits format.
+set -euo pipefail
+
+MSG_FILE="$1"
+MSG="$(cat "${MSG_FILE}")"
+
+# Allow merge commits
+if echo "${MSG}" | grep -qE "^Merge "; then
+    exit 0
+fi
+
+TYPES="feat|fix|test|perf|refactor|docs|build|ci|chore|spec|bench"
+SCOPES="core|ring|frame|claim|producer|consumer|flow|liveness|reaper|failover|platform|sim|channel|capi|ctl|diag|spec|build|ci|docs"
+
+PATTERN="^(${TYPES})(\((${SCOPES})\))?(!)?: .{1,72}"
+
+if ! echo "${MSG}" | grep -qE "${PATTERN}"; then
+    echo "commit-msg: commit message does not match Conventional Commits format." >&2
+    echo "  Expected: <type>(<scope>): <subject>" >&2
+    echo "  Types: feat fix test perf refactor docs build ci chore spec bench" >&2
+    echo "  Example: feat(ring): GREEN padding frame emission on wrap" >&2
+    echo "" >&2
+    echo "  Got: ${MSG}" >&2
+    exit 1
+fi
+
+exit 0

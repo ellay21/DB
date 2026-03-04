@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# pre-push hook: configure + build + unit tests. Budget: < 120 s with ccache.
+set -euo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+
+echo "[pre-push] Configuring (dev preset)..."
+cmake --preset dev -S "${ROOT}" > /dev/null
+
+echo "[pre-push] Building (ccache)..."
+cmake --build --preset dev --parallel
+
+echo "[pre-push] Running unit tests..."
+ctest --preset unit --test-dir "${ROOT}/build/dev" --output-on-failure
+
+echo "[pre-push] OK"
+exit 0
