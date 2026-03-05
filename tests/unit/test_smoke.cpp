@@ -1,7 +1,7 @@
-#include <doctest/doctest.h>
 #include <revenant/revenant.hpp>
 #include <revenant/version.hpp>
 
+#include <doctest/doctest.h>
 #include <string_view>
 
 TEST_CASE("version_string is non-empty") {

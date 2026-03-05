@@ -1,8 +1,8 @@
 #pragma once
 
 #include <revenant/config.hpp>
-#include <revenant/version.hpp>
 #include <revenant/errors.hpp>
+#include <revenant/version.hpp>
 
 namespace revenant {
 
