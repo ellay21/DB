@@ -27,10 +27,9 @@ enum class StatusCode : std::uint32_t {
 const char* status_to_string(StatusCode code) noexcept;
 
 class Status {
-public:
+  public:
     Status() noexcept = default;
-    explicit Status(StatusCode code, std::string_view msg = {}) noexcept
-        : code_(code), msg_(msg) {}
+    explicit Status(StatusCode code, std::string_view msg = {}) noexcept : code_(code), msg_(msg) {}
 
     [[nodiscard]] bool ok() const noexcept { return code_ == StatusCode::Ok; }
     [[nodiscard]] StatusCode code() const noexcept { return code_; }
@@ -40,16 +39,14 @@ public:
 
     explicit operator bool() const noexcept { return ok(); }
 
-private:
-    StatusCode   code_ = StatusCode::Ok;
+  private:
+    StatusCode code_ = StatusCode::Ok;
     std::string_view msg_{};
 };
 
-template <typename T>
-class Result {
-public:
-    Result(T value) noexcept(noexcept(T(std::move(value))))
-        : value_(std::move(value)), status_() {}
+template <typename T> class Result {
+  public:
+    Result(T value) noexcept(noexcept(T(std::move(value)))) : value_(std::move(value)), status_() {}
 
     Result(Status status) noexcept : status_(status) {}
 
@@ -57,13 +54,13 @@ public:
     [[nodiscard]] const Status& status() const noexcept { return status_; }
 
     [[nodiscard]] const T& value() const& noexcept { return value_; }
-    [[nodiscard]] T&       value() & noexcept { return value_; }
-    [[nodiscard]] T&&      value() && noexcept { return std::move(value_); }
+    [[nodiscard]] T& value() & noexcept { return value_; }
+    [[nodiscard]] T&& value() && noexcept { return std::move(value_); }
 
     explicit operator bool() const noexcept { return ok(); }
 
-private:
-    T      value_{};
+  private:
+    T value_{};
     Status status_;
 };
 
