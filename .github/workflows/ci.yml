@@ -22,8 +22,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Install tools
-        run: |
-          pip3 install pre-commit cmake-format codespell
+        run: pip3 install pre-commit cmake-format codespell
 
       - name: clang-format check
         run: |
@@ -31,8 +30,7 @@ jobs:
             | xargs clang-format-18 --dry-run --Werror --style=file
 
       - name: cmake-format check
-        run: |
-          cmake-format --check CMakeLists.txt tests/CMakeLists.txt
+        run: cmake-format --check CMakeLists.txt tests/CMakeLists.txt
 
       - name: codespell
         run: codespell include/ src/ docs/ --skip="*.pc,*.pc.in" --quiet-level=2
@@ -41,6 +39,15 @@ jobs:
         run: |
           find scripts .githooks -type f | xargs file | grep 'shell script' \
             | cut -d: -f1 | xargs shellcheck --severity=warning || true
+
+      - name: Check no raw std::memory_order at call sites
+        run: |
+          if grep -r "memory_order_" include/revenant/core include/revenant/liveness \
+               --include="*.hpp" \
+               --exclude="atomics.hpp"; then
+            echo "ERROR: raw std::memory_order found outside atomics.hpp" >&2
+            exit 1
+          fi
 
   # --------------------------------------------------------------------------
   build:
@@ -51,22 +58,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - compiler: gcc-13
-            cc: gcc-13
-            cxx: g++-13
-            build_type: Debug
-          - compiler: gcc-13
-            cc: gcc-13
-            cxx: g++-13
-            build_type: Release
-          - compiler: clang-18
-            cc: clang-18
-            cxx: clang++-18
-            build_type: Debug
-          - compiler: clang-18
-            cc: clang-18
-            cxx: clang++-18
-            build_type: Release
+          - { compiler: gcc-13,   cc: gcc-13,   cxx: g++-13,      build_type: Debug,   image: "ghcr.io/ellay21/revenant-ci@sha256:7ec9e10579cacee9ad99d34012b13cf646fde088dde1f9438c9fec7d4f5793eb" }
+          - { compiler: gcc-13,   cc: gcc-13,   cxx: g++-13,      build_type: Release, image: "ghcr.io/ellay21/revenant-ci@sha256:7ec9e10579cacee9ad99d34012b13cf646fde088dde1f9438c9fec7d4f5793eb" }
+          - { compiler: clang-18, cc: clang-18, cxx: clang++-18,  build_type: Debug,   image: "ghcr.io/ellay21/revenant-ci@sha256:63ea11ad898a4cad24265770b69f00e2e6f2b4dc0724452a94061bea0031b35e" }
+          - { compiler: clang-18, cc: clang-18, cxx: clang++-18,  build_type: Release, image: "ghcr.io/ellay21/revenant-ci@sha256:63ea11ad898a4cad24265770b69f00e2e6f2b4dc0724452a94061bea0031b35e" }
+
+    container:
+      image: ${{ matrix.image }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -80,14 +78,6 @@ jobs:
             ${{ runner.os }}-${{ matrix.compiler }}-${{ matrix.build_type }}-
             ${{ runner.os }}-${{ matrix.compiler }}-
 
-      - name: Install compiler
-        run: |
-          sudo apt-get update -qq
-          if [[ "${{ matrix.compiler }}" == gcc-13 ]]; then
-            sudo apt-get install -y gcc-13 g++-13
-          else
-            sudo apt-get install -y clang-18
-          fi
 
       - name: Configure
         env:
@@ -103,26 +93,51 @@ jobs:
         run: cmake --build build/ci --parallel $(nproc)
 
   # --------------------------------------------------------------------------
+  headers:
+    name: Header Self-Containment
+    runs-on: ubuntu-24.04
+    container: ghcr.io/ellay21/revenant-ci@sha256:63ea11ad898a4cad24265770b69f00e2e6f2b4dc0724452a94061bea0031b35e
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      - name: Generate per-header TUs and compile
+        run: |
+          BUILD_DIR="build/header-check"
+          cmake -S . -B "${BUILD_DIR}" \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_STANDARD=20 \
+            -DREVENANT_BUILD_TESTS=OFF \
+            -DCMAKE_CXX_COMPILER=clang++-18 > /dev/null
+          cmake --build "${BUILD_DIR}" --parallel $(nproc) > /dev/null
+
+          FAILED=0
+          for hdr in $(find include/revenant -name '*.hpp' | sort); do
+            rel="${hdr#include/}"
+            TU="$(mktemp /tmp/hdr_check_XXXXXX.cpp)"
+            echo "#include <${rel}>" > "${TU}"
+            if ! clang++-18 -std=c++20 -Wall -Werror \
+                -I"include" -I"${BUILD_DIR}/include" \
+                -c "${TU}" -o /dev/null 2>/tmp/hdr_err.txt; then
+              echo "FAIL: ${rel}"
+              cat /tmp/hdr_err.txt
+              FAILED=1
+            fi
+            rm -f "${TU}"
+          done
+          exit ${FAILED}
+
+  # --------------------------------------------------------------------------
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-24.04
+    container: ghcr.io/ellay21/revenant-ci@sha256:7ec9e10579cacee9ad99d34012b13cf646fde088dde1f9438c9fec7d4f5793eb
     needs: build
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
-      - name: Restore build cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
-        with:
-          path: build
-          key: "${{ runner.os }}-gcc-13-Debug-${{ hashFiles('**/CMakeLists.txt', 'cmake/**') }}"
-          restore-keys: |
-            ${{ runner.os }}-gcc-13-Debug-
-
-      - name: Install gcc-13
-        run: sudo apt-get update -qq && sudo apt-get install -y gcc-13 g++-13
-
-      - name: Configure (if not cached)
+      - name: Configure
         env:
           CC: gcc-13
           CXX: g++-13
@@ -132,12 +147,12 @@ jobs:
             -DREVENANT_BUILD_TESTS=ON \
             -DCMAKE_CXX_STANDARD=20
 
-      - name: Build (if not cached)
+      - name: Build
         run: cmake --build build/ci --parallel $(nproc)
 
-      - name: Run unit tests
+      - name: Run unit + property tests
         run: |
-          ctest --test-dir build/ci -L unit \
+          ctest --test-dir build/ci -L "unit|property" \
             --output-on-failure \
             --output-junit test-results.xml
 
@@ -149,15 +164,58 @@ jobs:
           path: test-results.xml
 
   # --------------------------------------------------------------------------
-  packaging:
-    name: Packaging Consumers
+  coverage:
+    name: Coverage
     runs-on: ubuntu-24.04
+    container: ghcr.io/ellay21/revenant-ci@sha256:7ec9e10579cacee9ad99d34012b13cf646fde088dde1f9438c9fec7d4f5793eb
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
-      - name: Install gcc-13
-        run: sudo apt-get update -qq && sudo apt-get install -y gcc-13 g++-13
+      - name: Install gcovr
+        run: |
+          apt-get update -qq
+          pip3 install gcovr --break-system-packages
+
+      - name: Configure with coverage
+        env:
+          CC: gcc-13
+          CXX: g++-13
+        run: |
+          cmake -S . -B build/coverage \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DREVENANT_BUILD_TESTS=ON \
+            -DREVENANT_ENABLE_COVERAGE=ON \
+            -DCMAKE_CXX_STANDARD=20
+
+      - name: Build and test
+        run: |
+          cmake --build build/coverage --parallel $(nproc)
+          ctest --test-dir build/coverage -L "unit|property" --output-on-failure
+
+      - name: Report coverage
+        run: |
+          gcovr --root . \
+            --filter "include/revenant/core/" \
+            --filter "include/revenant/liveness/" \
+            --txt --xml coverage.xml \
+            --fail-under-line 90
+        continue-on-error: true  # report but don't block until P3
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: coverage
+          path: coverage.xml
+
+  # --------------------------------------------------------------------------
+  packaging:
+    name: Packaging Consumers
+    runs-on: ubuntu-24.04
+    container: ghcr.io/ellay21/revenant-ci@sha256:7ec9e10579cacee9ad99d34012b13cf646fde088dde1f9438c9fec7d4f5793eb
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
       - name: Run packaging tests
         env:
