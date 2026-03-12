@@ -46,6 +46,7 @@ revenant_add_test(prop_block_index SOURCES property/prop_block_index.cpp LABELS
                   property)
 revenant_add_test(test_block_index SOURCES unit/test_block_index.cpp LABELS
                   unit)
+revenant_add_test(test_checksum SOURCES unit/test_checksum.cpp LABELS unit)
 revenant_add_test(test_frame_codec SOURCES unit/test_frame_codec.cpp LABELS
                   unit)
 revenant_add_test(test_layout_offsets SOURCES unit/test_layout_offsets.cpp
