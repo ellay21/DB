@@ -52,6 +52,9 @@ revenant_add_test(test_position SOURCES unit/test_position.cpp LABELS unit)
 
 revenant_add_test(test_ring_math SOURCES unit/test_ring_math.cpp LABELS unit)
 
+revenant_add_test(test_layout_offsets SOURCES unit/test_layout_offsets.cpp
+                  LABELS unit)
+
 # ---- Property tests ---------------------------------------------------------
 if(TARGET rapidcheck)
   revenant_add_test(
