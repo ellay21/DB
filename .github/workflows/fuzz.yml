@@ -1,0 +1,42 @@
+name: Fuzz
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 2 * * *' # Nightly
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install dependencies
+      run: sudo apt-get install -y clang cmake ninja-build
+      
+    - name: Configure CMake
+      env:
+        CXX: clang++
+      run: cmake -S . -B build -G Ninja
+      
+    - name: Build fuzzers
+      run: cmake --build build --target fuzz_frame_parser fuzz_control_block
+      
+    - name: Run fuzz_frame_parser (PR)
+      if: github.event_name == 'pull_request'
+      run: ./build/tests/fuzz_frame_parser -max_total_time=600 tests/fuzz/corpus
+      
+    - name: Run fuzz_control_block (PR)
+      if: github.event_name == 'pull_request'
+      run: ./build/tests/fuzz_control_block -max_total_time=600 tests/fuzz/corpus
+      
+    - name: Run fuzz_frame_parser (Nightly)
+      if: github.event_name == 'schedule'
+      run: ./build/tests/fuzz_frame_parser -max_total_time=21600 -merge=1 tests/fuzz/corpus
+      
+    - name: Run fuzz_control_block (Nightly)
+      if: github.event_name == 'schedule'
+      run: ./build/tests/fuzz_control_block -max_total_time=21600 -merge=1 tests/fuzz/corpus
