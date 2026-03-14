@@ -49,6 +49,10 @@ jobs:
             exit 1
           fi
 
+      - name: check layout offsets
+        run: |
+          python3 scripts/check_layout_offsets.py
+
   # --------------------------------------------------------------------------
   build:
     name: "Build (${{ matrix.compiler }}, ${{ matrix.build_type }})"
