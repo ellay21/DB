@@ -43,8 +43,7 @@ target_compile_features(revenant_core INTERFACE cxx_std_20)
 revenant_set_warnings(revenant_core INTERFACE)
 
 # ---- Main library target ----------------------------------------------------
-add_library(revenant_lib STATIC src/errors.cpp
-    src/checksum.cpp)
+add_library(revenant_lib STATIC src/errors.cpp src/checksum.cpp)
 add_library(revenant::revenant ALIAS revenant_lib)
 set_target_properties(revenant_lib PROPERTIES OUTPUT_NAME "revenant" EXPORT_NAME
                                                                      revenant)

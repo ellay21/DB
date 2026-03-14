@@ -1,7 +1,8 @@
-#include "revenant/core/layout.hpp"
-#include <doctest/doctest.h>
 #include <cstddef>
+#include <doctest/doctest.h>
 #include <type_traits>
+
+#include "revenant/core/layout.hpp"
 
 TEST_CASE("I14: ControlBlock hot fields are on distinct cache lines") {
     using rvn::core::ControlBlock;
@@ -45,8 +46,8 @@ TEST_CASE("FrameHeader first 8 bytes are byte-identical across all kinds") {
 }
 
 TEST_CASE("ParticipantSlot layout") {
-    using rvn::core::ParticipantSlot;
     using rvn::core::kCacheLine;
+    using rvn::core::ParticipantSlot;
 
     static_assert(sizeof(ParticipantSlot) == 4 * kCacheLine);
     static_assert(alignof(ParticipantSlot) == 2 * kCacheLine);

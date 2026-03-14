@@ -1,10 +1,11 @@
 #pragma once
 
+#include <cstdint>
+#include <cstring>
+#include <span>
+
 #include "revenant/core/layout.hpp"
 #include "revenant/errors.hpp"
-#include <cstdint>
-#include <span>
-#include <cstring>
 
 namespace rvn::core {
 
@@ -13,37 +14,45 @@ enum class FrameKind : std::uint8_t { Minimal = 0, Standard = 1, Traced = 2 };
 struct FrameView {
     FrameKind kind;
     std::span<const std::byte> payload;
-    
+
     // Extracted fields
     std::uint16_t type;
     std::uint8_t flags;
     std::uint8_t header_version;
-    
+
     // Only valid if kind >= Standard
     std::uint64_t sequence = 0;
     std::uint32_t session = 0;
     std::uint32_t checksum = 0;
     std::uint64_t timestamp = 0;
-    
+
     // Only valid if kind == Traced
     std::uint64_t producer_ts = 0;
     std::uint64_t trace_id = 0;
 };
 
 // Flags bitmask
-constexpr std::uint8_t kFlagFragBegin   = 1 << 0;
-constexpr std::uint8_t kFlagFragEnd     = 1 << 1;
-constexpr std::uint8_t kFlagPadding     = 1 << 2;
-constexpr std::uint8_t kFlagReaped      = 1 << 3;
+constexpr std::uint8_t kFlagFragBegin = 1 << 0;
+constexpr std::uint8_t kFlagFragEnd = 1 << 1;
+constexpr std::uint8_t kFlagPadding = 1 << 2;
+constexpr std::uint8_t kFlagReaped = 1 << 3;
 constexpr std::uint8_t kFlagChecksummed = 1 << 4;
 
-inline revenant::Result<FrameView> decode_frame(std::span<const std::byte> memory, FrameKind expected_kind) noexcept {
+inline revenant::Result<FrameView> decode_frame(std::span<const std::byte> memory,
+                                                FrameKind expected_kind) noexcept {
     std::size_t header_size = 0;
     switch (expected_kind) {
-        case FrameKind::Minimal:  header_size = sizeof(FrameHeaderMinimal); break;
-        case FrameKind::Standard: header_size = sizeof(FrameHeaderStandard); break;
-        case FrameKind::Traced:   header_size = sizeof(FrameHeaderTraced); break;
-        default: return revenant::Status(revenant::StatusCode::InvalidArgument, "Invalid FrameKind");
+    case FrameKind::Minimal:
+        header_size = sizeof(FrameHeaderMinimal);
+        break;
+    case FrameKind::Standard:
+        header_size = sizeof(FrameHeaderStandard);
+        break;
+    case FrameKind::Traced:
+        header_size = sizeof(FrameHeaderTraced);
+        break;
+    default:
+        return revenant::Status(revenant::StatusCode::InvalidArgument, "Invalid FrameKind");
     }
 
     if (memory.size() < header_size) {
@@ -60,11 +69,12 @@ inline revenant::Result<FrameView> decode_frame(std::span<const std::byte> memor
     }
 
     if (common.length < 0 || common.length == 0) {
-        return revenant::Status(revenant::StatusCode::WouldBlock, "Frame claimed but not readable, or free");
+        return revenant::Status(revenant::StatusCode::WouldBlock,
+                                "Frame claimed but not readable, or free");
     }
 
     std::size_t payload_len = static_cast<std::size_t>(common.length);
-    
+
     if (memory.size() - header_size < payload_len) {
         return revenant::Status(revenant::StatusCode::Corrupt, "Buffer too small for payload");
     }

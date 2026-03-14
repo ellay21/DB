@@ -1,8 +1,9 @@
-#include "revenant/core/frame.hpp"
-#include "revenant/core/layout.hpp"
+#include <cstring>
 #include <doctest/doctest.h>
 #include <vector>
-#include <cstring>
+
+#include "revenant/core/frame.hpp"
+#include "revenant/core/layout.hpp"
 
 using namespace rvn::core;
 using revenant::StatusCode;
@@ -22,7 +23,7 @@ TEST_CASE("FrameCodec: encode/decode round-trip Standard") {
     auto res = decode_frame(buffer, FrameKind::Standard);
     REQUIRE(res.ok());
     auto view = res.value();
-    
+
     CHECK(view.kind == FrameKind::Standard);
     CHECK(view.payload.size() == 42);
     CHECK(view.type == 1337);
@@ -45,7 +46,7 @@ TEST_CASE("FrameCodec: encode/decode round-trip Minimal") {
     auto res = decode_frame(buffer, FrameKind::Minimal);
     REQUIRE(res.ok());
     auto view = res.value();
-    
+
     CHECK(view.kind == FrameKind::Minimal);
     CHECK(view.payload.size() == 42);
     CHECK(view.type == 1337);
@@ -66,7 +67,7 @@ TEST_CASE("FrameCodec: encode/decode round-trip Traced") {
     auto res = decode_frame(buffer, FrameKind::Traced);
     REQUIRE(res.ok());
     auto view = res.value();
-    
+
     CHECK(view.kind == FrameKind::Traced);
     CHECK(view.payload.size() == 42);
     CHECK(view.type == 1337);
@@ -91,7 +92,7 @@ TEST_CASE("FrameCodec: free frame (== 0) is rejected") {
     std::vector<std::byte> buffer(1024);
     auto* hdr = new (buffer.data()) FrameHeaderMinimal{};
     hdr->length = 0;
-    
+
     auto res = decode_frame(buffer, FrameKind::Minimal);
     CHECK(!res.ok());
     CHECK(res.status().code() == StatusCode::WouldBlock);
@@ -101,7 +102,7 @@ TEST_CASE("FrameCodec: length == INT32_MIN is rejected, not negated") {
     std::vector<std::byte> buffer(1024);
     auto* hdr = new (buffer.data()) FrameHeaderMinimal{};
     hdr->length = -2147483648; // INT32_MIN
-    
+
     auto res = decode_frame(buffer, FrameKind::Minimal);
     CHECK(!res.ok());
     CHECK(res.status().code() == StatusCode::Corrupt);
@@ -112,7 +113,7 @@ TEST_CASE("FrameCodec: padding frames decode and report their span") {
     auto* hdr = new (buffer.data()) FrameHeaderStandard{};
     hdr->length = 100; // Total length of padding payload
     hdr->flags = kFlagPadding;
-    
+
     auto res = decode_frame(buffer, FrameKind::Standard);
     REQUIRE(res.ok());
     CHECK((res.value().flags & kFlagPadding) != 0);
@@ -131,7 +132,7 @@ TEST_CASE("FrameCodec: buffer too small for payload") {
     std::vector<std::byte> buffer(40); // Standard header is 32, leaves 8 bytes for payload
     auto* hdr = new (buffer.data()) FrameHeaderStandard{};
     hdr->length = 20; // Needs 20, but only 8 available
-    
+
     auto res = decode_frame(buffer, FrameKind::Standard);
     CHECK(!res.ok());
     CHECK(res.status().code() == StatusCode::Corrupt);

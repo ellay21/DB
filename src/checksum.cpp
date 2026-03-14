@@ -6,7 +6,8 @@ static std::uint32_t crc32c_table[256];
 static bool crc32c_table_init = false;
 
 static void init_crc32c_table() {
-    if (crc32c_table_init) return;
+    if (crc32c_table_init)
+        return;
     for (std::uint32_t i = 0; i < 256; i++) {
         std::uint32_t c = i;
         for (int j = 0; j < 8; j++) {
