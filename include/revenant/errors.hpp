@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <string_view>
 #include <system_error>
 
@@ -53,14 +54,14 @@ template <typename T> class Result {
     [[nodiscard]] bool ok() const noexcept { return status_.ok(); }
     [[nodiscard]] const Status& status() const noexcept { return status_; }
 
-    [[nodiscard]] const T& value() const& noexcept { return value_; }
-    [[nodiscard]] T& value() & noexcept { return value_; }
-    [[nodiscard]] T&& value() && noexcept { return std::move(value_); }
+    [[nodiscard]] const T& value() const& noexcept { return *value_; }
+    [[nodiscard]] T& value() & noexcept { return *value_; }
+    [[nodiscard]] T&& value() && noexcept { return std::move(*value_); }
 
     explicit operator bool() const noexcept { return ok(); }
 
   private:
-    T value_{};
+    std::optional<T> value_;
     Status status_;
 };
 
